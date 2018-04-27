@@ -2,14 +2,111 @@ from display import *
 from matrix import *
 from math import *
 from gmath import *
+from random import randint 
 
 def scanline_convert(polygons, i, screen, zbuffer ):
-    pass
+    color = [randint(0, 255), randint(0, 255), randint(0, 255)] 
 
+    x_top = polygons[i][0]
+    x_mid = polygons[i+1][0]
+    x_bot = polygons[i+2][0]
+
+    y_top = polygons[i][1]
+    y_mid = polygons[i+1][1]
+    y_bot = polygons[i+2][1]
+
+    z_top = polygons[i][2]
+    z_mid = polygons[i+1][2]
+    z_bot = polygons[i+2][2]
+
+    if y_mid > y_top:
+        temp = y_mid
+        y_mid = y_top
+        y_top = temp
+
+        temp = x_mid
+        x_mid = x_top
+        x_top = temp
+
+        temp = z_mid
+        z_mid = z_top
+        z_top = temp
+
+    if y_bot > y_top:
+        temp = y_bot
+        y_bot = y_top
+        y_top = temp
+
+        temp = x_bot
+        x_bot = x_top
+        x_top = temp
+
+        temp = z_bot
+        z_bot = z_top
+        z_top = temp
+
+    if y_bot > y_mid:
+        temp = y_bot
+        y_bot = y_mid
+        y_mid = temp
+
+        temp = x_bot
+        x_bot = x_mid
+        x_mid = temp
+
+        temp = z_bot
+        z_bot = z_mid
+        z_mid = temp
+
+    y = y_bot
+    x0 = x_bot
+    x1 = x0
+    z0 = z_bot
+    z1 = z0
+
+    delta_x0 = (x_top - x_bot) / (y_top - y_bot)
+    delta_z0 = (z_top - z_bot) / (y_top - y_bot)
+    delta_x1 = 0
+    delta_z1 = 0
+
+    draw_line(x0, y, z0, x1, y, z1, screen, zbuffer, color)      
+
+    if y_mid - y_bot != 0:
+        delta_x1 = (x_mid - x_bot) / (y_mid - y_bot)
+        delta_z1 = (z_mid - z_bot) / (y_mid - y_bot)
+
+        while y < y_mid:
+            draw_line(x0, y, z0, x1, y, z1, screen, zbuffer, color)
+            y += 1
+            x0 += delta_x0
+            z0 += delta_z0
+            x1 += delta_x1
+            z1 += delta_x1
+
+    y = y_mid
+    x1 = x_mid
+    z1 = z_mid
+    
+    draw_line(x0, y, z0, x1, y, z1, screen, zbuffer, color)
+
+    if y_top - y_mid != 0:
+        delta_x1 = (x_top - x_mid) / (y_top - y_mid)
+        delta_z1 = (z_top - z_mid) / (y_top - y_mid)
+
+        while y < y_top:
+            draw_line(x0, y, z0, x1, y, z1, screen, zbuffer, color)
+            y += 1
+            x0 += delta_x0
+            z0 += delta_z0
+            x1 += delta_x1
+            z1 += delta_z1
+
+            
 def add_polygon( polygons, x0, y0, z0, x1, y1, z1, x2, y2, z2 ):
     add_point(polygons, x0, y0, z0);
     add_point(polygons, x1, y1, z1);
     add_point(polygons, x2, y2, z2);
+    
 
 def draw_polygons( matrix, screen, zbuffer, color ):
     if len(matrix) < 2:
@@ -22,28 +119,9 @@ def draw_polygons( matrix, screen, zbuffer, color ):
         normal = calculate_normal(matrix, point)[:]
 
         if normal[2] > 0:
-            draw_line( int(matrix[point][0]),
-                       int(matrix[point][1]),
-                       matrix[point][2],
-                       int(matrix[point+1][0]),
-                       int(matrix[point+1][1]),
-                       matrix[point+1][2],
-                       screen, zbuffer, color)
-            draw_line( int(matrix[point+2][0]),
-                       int(matrix[point+2][1]),
-                       matrix[point+2][2],
-                       int(matrix[point+1][0]),
-                       int(matrix[point+1][1]),
-                       matrix[point+1][2],
-                       screen, zbuffer, color)
-            draw_line( int(matrix[point][0]),
-                       int(matrix[point][1]),
-                       matrix[point][2],
-                       int(matrix[point+2][0]),
-                       int(matrix[point+2][1]),
-                       matrix[point+2][2],
-                       screen, zbuffer, color)
-        point+= 3
+            scanline_convert(matrix, point, screen, zbuffer)
+
+        point += 3
 
 
 def add_box( polygons, x, y, z, width, height, depth ):
@@ -235,6 +313,7 @@ def draw_lines( matrix, screen, zbuffer, color ):
                    matrix[point+1][2],
                    screen, zbuffer, color)
         point+= 2
+        
 
 def add_edge( matrix, x0, y0, z0, x1, y1, z1 ):
     add_point(matrix, x0, y0, z0)
@@ -250,13 +329,18 @@ def draw_line( x0, y0, z0, x1, y1, z1, screen, zbuffer, color ):
     if x0 > x1:
         xt = x0
         yt = y0
+        zt = z0 
         x0 = x1
         y0 = y1
+        z0 = z1 
         x1 = xt
         y1 = yt
+        z1 = zt
 
     x = x0
     y = y0
+    z = z0
+    
     A = 2 * (y1 - y0)
     B = -2 * (x1 - x0)
     wide = False
@@ -269,6 +353,7 @@ def draw_line( x0, y0, z0, x1, y1, z1, screen, zbuffer, color ):
         dx_east = dx_northeast = 1
         dy_east = 0
         d_east = A
+            
         if ( A > 0 ): #octant 1
             d = A + B/2
             dy_northeast = 1
@@ -282,6 +367,7 @@ def draw_line( x0, y0, z0, x1, y1, z1, screen, zbuffer, color ):
         tall = True
         dx_east = 0
         dx_northeast = 1
+            
         if ( A > 0 ): #octant 2
             d = A/2 + B
             dy_east = dy_northeast = 1
@@ -297,8 +383,16 @@ def draw_line( x0, y0, z0, x1, y1, z1, screen, zbuffer, color ):
             loop_start = y1
             loop_end = y
 
+    if loop_end - loop_start != 0:
+        delta_z = (z1 - z0) / (loop_end - loop_start)
+
+    else:
+        delta_z = 0
+
+    z = z0
+    
     while ( loop_start < loop_end ):
-        plot( screen, zbuffer, color, x, y, 0 )
+        plot( screen, zbuffer, color, x, y, z )
         if ( (wide and ((A > 0 and d > 0) or (A < 0 and d < 0))) or
              (tall and ((A > 0 and d < 0) or (A < 0 and d > 0 )))):
 
@@ -309,5 +403,8 @@ def draw_line( x0, y0, z0, x1, y1, z1, screen, zbuffer, color ):
             x+= dx_east
             y+= dy_east
             d+= d_east
-        loop_start+= 1
-    plot( screen, zbuffer, color, x, y, 0 )
+            
+        loop_start += 1
+        z += delta_z
+        
+    plot( screen, zbuffer, color, x, y, z1 )
